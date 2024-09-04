@@ -175,22 +175,34 @@ def update_tree(tree):
     case CellTree/Leaf:
       return tree
 
+
 def print_tree(tree):
-  fold tree:
+  return print_tree_helper(tree, 0)
+
+def print_tree_helper(tree, depth):
+  indent = String/repeat("  ", depth)
+  match tree:
     case CellTree/Node:
-      left_str = tree.left
-      right_str = tree.right
-      node_str = "Node: Rule: "
-      node_str = String/concat(node_str, rule_to_string(tree.rule))
-      node_str = String/concat(node_str, ", Value: ")
+      node_str = String/concat(indent, "Node: ")
       node_str = String/concat(node_str, bool_to_string(tree.value))
+      node_str = String/concat(node_str, ", ")
+      node_str = String/concat(node_str, rule_to_string(tree.rule))
       node_str = String/concat(node_str, "\n")
+      left_str = print_tree_helper(tree.left, depth + 1)
+      right_str = print_tree_helper(tree.right, depth + 1)
       return String/concat(node_str, String/concat(left_str, right_str))
     case CellTree/Leaf:
-      leaf_str = "Leaf: Value: "
+      leaf_str = String/concat(indent, "Leaf: ")
       leaf_str = String/concat(leaf_str, bool_to_string(tree.value))
       leaf_str = String/concat(leaf_str, "\n")
       return leaf_str
+
+def String/repeat(str, n):
+  bend result = "", count = n:
+    when count > 0:
+      return fork(String/concat(result, str), count - 1)
+    else:
+      return result
 
 def bool_to_string(bool):
   match bool:
@@ -234,6 +246,10 @@ def rule_to_string(rule):
 # Main Function
 def main:
   with IO:
+    # This comment not accurate:
+    # This (depth=3) will create a 7x7 grid (2^3 - 1 = 7)
+    # Ideally, we'd specify depth naturally (7 instead of 3), but that would require computing log(base 2)(depth+1), and
+    # log is an F24 operation and conversion between number types isn't currently supported, so, we're stuck with this.
     initial_depth = 3
     initial_seed = 12345
     initial_tree = create_tree(initial_depth, initial_seed)

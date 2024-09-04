@@ -2067,6 +2067,21 @@ Programming Guidelines:
 - Think in terms of data transformations rather than step-by-step procedures
 - Utilize `fold` and `bend` for working with recursive structures
 
+Notes/Errata:
+1. Type Hinting: The documentation should clearly state that type hinting is not supported in function definitions or within type definitions.
+2. Constants: It should be explicitly mentioned that constants need to be defined as functions, e.g., `def AND(): return 0` instead of `def AND: u24 = 0`.
+3. Switch/Case Statements: The documentation should clarify that switch/case statements can only use native numbers, not constants or enums.
+4. Pattern Matching: It should be emphasized that when using `match` on a type, all possibilities must be enumerated.
+5. Case Statements: The documentation should state that case statements cannot be inline and each case must have its own return statement.
+6. If Statements: It should be noted that inline if statements are not supported.
+7. IO Operations: The documentation needs to provide more detailed information on how IO operations are handled, particularly:
+   - How to properly structure IO operations within a `with IO:` context.
+   - The requirement for a return statement within the `with IO:` block.
+   - How to force evaluation of IO operations, including more details on the use of `undefer`.
+8. Equality Comparisons: It should be clarified that the equality operator (`==`) is only defined for native number types, and pattern matching should be used for other types.
+9. Function Calls: The documentation should mention that all function calls must either receive their return value or discard it with `*`.
+10. Lazy Evaluation: More information should be provided on Bend's lazy evaluation strategy and how it affects IO operations and other side effects.
+
 *****************************
 End of Bend Language Reference Guide
 *****************************

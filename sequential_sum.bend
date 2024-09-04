@@ -8,7 +8,18 @@ def Sum(start, target):
     # start incremented by 1, and add the result to start.
     return start + Sum(start + 1, target)
 
+type Rule:
+  AND
+  OR
+
+
 def main():
   # This translates to (1 + (2 + (3 + (...... + (999999 + 1000000)))))
   # Note that this will overflow the maximum value of a number in Bend
-  return Sum(1, 1_000_000)
+  a = Rule/OR
+  match a:
+    case Rule/AND:
+      return Sum(1, 1_000_000)
+    case Rule/OR:
+      return -1
+

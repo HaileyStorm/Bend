@@ -1,0 +1,88 @@
+We're going to work on a Bend program. Here's the project plan:
+
+1. Data Types:
+```bend
+type Bool = True | False
+
+type CellTree:
+  Node { rule: u24, value: Bool, ~left: CellTree, ~right: CellTree }
+  Leaf { value: Bool }
+```
+
+2. Rule Constants:
+```bend
+def AND: u24 = 0
+def OR: u24 = 1
+# ... (other rules: xor, nand, nor, xnor, implication, equivalence, always-true, always-false, A, B, not-A, not-B)
+```
+
+3. Rule Application:
+```bend
+def apply_rule(rule: u24, a: Bool, b: Bool) -> Bool:
+  # ... (implementation)
+```
+
+4. Tree Creation:
+```bend
+def create_tree(depth: u24) -> CellTree:
+  bend depth, x = 0:
+    when depth != 0:
+      return CellTree/Node(
+        random_rule(),
+        random_bool(),
+        fork(depth - 1, x*2+1),
+        fork(depth - 1, x*2+2)
+      )
+    else:
+      return CellTree/Leaf(random_bool())
+
+def main:
+  # This will create a 7x7 grid (2^3 - 1 = 7)
+  # Ideally, we'd specify depth naturally (7 instead of 3), but that would require computing log(base 2)(depth+1), and
+  # log is an F24 operation and conversion between number types isn't currently supported, so, we're stuck with this.
+  initial_depth = 3
+  initial_tree = create_tree(initial_depth)
+  updated_tree = update_tree(initial_tree)
+  print_tree(updated_tree)
+```
+
+5. Tree Update:
+```bend
+def update_tree(tree: CellTree) -> CellTree:
+  fold tree:
+    case CellTree/Node:
+      new_value = apply_rule(tree.rule, tree.left.value, tree.right.value)
+      return CellTree/Node { rule: tree.rule, value: new_value, left: tree.left, right: tree.right }
+    case CellTree/Leaf:
+      return tree
+```
+
+6. Main Function:
+```bend
+def main:
+  initial_tree = create_tree(7)
+  updated_tree = update_tree(initial_tree)
+  print_tree(updated_tree)
+```
+
+7. Print Function:
+```bend
+def print_tree(tree: CellTree):
+  # ... (implementation)
+```
+
+Tests:
+1. Test CellTree creation and structure
+2. Test rule application for all rules
+3. Test tree update functionality
+4. Test overall system with a known input tree
+
+Future Features:
+1. Visualization: Implement a hex grid visualization of the rule array, with cell color indicating current value and border color indicating the rule. Add capability for step-by-step or full tree updates. Note that the intent is for the two hexes touching above a cell to be the two cells which are the inputs for that cell's rule, which in the data structure are its children.
+2. Multi-directional Updates: Extend the system to support top-down, bottom-up, left-right, and right-left updates. This may require maintaining four copies of the rule array for efficient parallelization. Implement a merging mechanism to combine results from different directional updates using additional rules for each cell (perhaps all directions update a single temporary tree, totalizing a value for each cell [with e.g. top-down adding 2 to True cells and bottom-up adding 4 and left-right adding 8 etc. so the total can be deconstructed to its individual contributionts], and then the merge rules for each cell are applied to that temporary tree using the total value to decide how to apply their rules, producing the final updated tree).
+
+
+
+---
+
+Later, training/initialization of values&rules.

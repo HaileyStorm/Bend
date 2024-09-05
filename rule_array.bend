@@ -3,8 +3,8 @@ type Bool:
   True
   False
 
-type CellTree:
-  Node { rule, value, ~left, ~right }
+type Cell:
+  Node { rule, value }
   Leaf { value }
 
 type Rule:
@@ -131,6 +131,170 @@ def random_bool(seed):
   else:
     return Bool/False
 
+def create_grid(width, height, seed):
+  bend y = 0, grid = []:
+    when y < height:
+      new_row = create_row(y, width, seed)
+      return fork(y + 1, List/concat(grid, [new_row]))
+    else:
+      return grid
+
+def create_row(y, width, seed):
+  bend x = 0, row = []:
+    when x < width:
+      if y == 0 | (y % 2 == 1 & x == 0) | (y % 2 == 0 & x == width - 1):
+        cell = Cell/Leaf(random_bool(seed + x + y * width))
+      else:
+        rule = random_rule(seed + x + y * width)
+        value = random_bool(seed + x + y * width + 1)
+        cell = Cell/Node(rule, value)
+      return fork(x + 1, List/concat(row, [cell]))
+    else:
+      return row
+
+type CellDebug:
+  Debug { cell_index, cell_type, rule, old_value, new_value }
+
+def update_grid(grid):
+  bend y = 1, updated_grid = [List/index(grid, 0)], debug_info = []:
+    when y < get_list_length(grid):
+      current_row = List/index(grid, y)
+      prev_row = List/index(grid, y - 1)
+      (updated_row, row_debug) = update_row(current_row, prev_row, y)
+      debug_info = List/concat(debug_info, [row_debug])
+      updated_grid = List/concat(updated_grid, [updated_row])
+      return fork(y + 1, updated_grid, debug_info)
+    else:
+      return (updated_grid, debug_info)
+
+def update_row(current_row, prev_row, y):
+  bend x = 0, updated_row = [], row_debug = []:
+    when x < get_list_length(current_row):
+      cell = List/index(current_row, x)
+      (updated_cell, cell_debug) = update_cell(cell, x, prev_row)
+      row_debug = List/concat(row_debug, [cell_debug])
+      updated_row = List/concat(updated_row, [updated_cell])
+      return fork(x + 1, updated_row, row_debug)
+    else:
+      return (updated_row, row_debug)
+
+
+def update_cell(cell, x, prev_row):
+  debug_info = []
+  debug_info = List/concat(debug_info, [String/concat("Cell ", int_to_string(x))])
+  match cell:
+    case Cell/Node:
+      debug_info = List/concat(debug_info, ["(Node)"])
+      left_index = x
+      right_index = x
+      if x % 2 == 0:
+        left_index = x - 1
+        right_index = x
+      else:
+        left_index = x
+        right_index = x + 1
+
+      left_value = Bool/False
+      right_value = Bool/False
+
+      if left_index >= 0:
+        left_value = get_value(List/index(prev_row, left_index))
+      else:
+        left_value = left_value
+
+      if right_index < get_list_length(prev_row):
+        right_value = get_value(List/index(prev_row, right_index))
+      else:
+        right_value = right_value
+
+      new_value = apply_rule(cell.rule, left_value, right_value)
+      debug_info = List/concat(debug_info, [String/concat("Rule: ", rule_to_string(cell.rule))])
+      debug_info = List/concat(debug_info, [String/concat("Old: ", bool_to_string(cell.value))])
+      debug_info = List/concat(debug_info, [String/concat("New: ", bool_to_string(new_value))])
+      updated_cell = Cell/Node(cell.rule, new_value)
+      return (updated_cell, debug_info)
+    case Cell/Leaf:
+      debug_info = List/concat(debug_info, ["(Leaf)"])
+      debug_info = List/concat(debug_info, [String/concat("Value: ", bool_to_string(cell.value))])
+      updated_cell = cell
+      return (updated_cell, debug_info)
+
+def get_value(cell):
+  match cell:
+    case Cell/Node:
+      return cell.value
+    case Cell/Leaf:
+      return cell.value
+
+def print_grid(grid):
+  bend y = 0, output = "":
+    when y < get_list_length(grid):
+      row = List/index(grid, y)
+      row_str = print_row(row, y)
+      output = String/concat(output, row_str)
+      return fork(y + 1, output)
+    else:
+      return output
+
+def print_row(row, y):
+  if y % 2 == 0:
+    indent = " "
+  else:
+    indent = ""
+  bend x = 0, output = indent:
+    when x < get_list_length(row):
+      cell = List/index(row, x)
+      cell_str = print_cell(cell)
+      output = String/concat(output, cell_str)
+      return fork(x + 1, output)
+    else:
+      return String/concat(output, "\n")
+
+def print_cell(cell):
+  match cell:
+    case Cell/Node:
+      char_code = rule_to_char(cell.rule)
+      if bool_to_int(cell.value):
+        return char_to_string(char_code)
+      else:
+        return char_to_string(char_code + 32)  # Convert to lowercase
+    case Cell/Leaf:
+      if bool_to_int(cell.value):
+        return "L"
+      else:
+        return "l"
+
+def rule_to_char(rule):
+  match rule:
+    case Rule/AND:
+      return 65  # 'A'
+    case Rule/OR:
+      return 79  # 'O'
+    case Rule/XOR:
+      return 88  # 'X'
+    case Rule/NAND:
+      return 78  # 'N'
+    case Rule/NOR:
+      return 82  # 'R'
+    case Rule/XNOR:
+      return 81  # 'Q'
+    case Rule/IMPLICATION:
+      return 73  # 'I'
+    case Rule/EQUIVALENCE:
+      return 69  # 'E'
+    case Rule/ALWAYS_TRUE:
+      return 84  # 'T'
+    case Rule/ALWAYS_FALSE:
+      return 70  # 'F'
+    case Rule/A:
+      return 85  # 'U'
+    case Rule/B:
+      return 86  # 'V'
+    case Rule/NOT_A:
+      return 87  # 'W'
+    case Rule/NOT_B:
+      return 89  # 'Y'
+
 # Apparently this isn't part of the standard library?
 def String/concat(s1, s2):
   match s1:
@@ -139,64 +303,6 @@ def String/concat(s1, s2):
     case String/Nil:
       return s2
 
-# Tree Creation
-def create_tree(depth, seed):
-  bend depth, seed:
-    when depth != 0:
-      rule = random_rule(seed)
-      value = random_bool(seed + 1)
-      left_seed = seed * 2 + 1
-      right_seed = seed * 2 + 2
-      return CellTree/Node(
-        rule,
-        value,
-        fork(depth - 1, left_seed),
-        fork(depth - 1, right_seed)
-      )
-    else:
-      value = random_bool(seed + 1)
-      return CellTree/Leaf(value)
-
-def get_value(tree):
-  match tree:
-    case CellTree/Node:
-      return tree.value
-    case CellTree/Leaf:
-      return tree.value
-
-# Tree Update
-def update_tree(tree):
-  fold tree:
-    case CellTree/Node:
-      left_value = get_value(tree.left)
-      right_value = get_value(tree.right)
-      new_value = apply_rule(tree.rule, left_value, right_value)
-      return CellTree/Node { rule: tree.rule, value: new_value, left: tree.left, right: tree.right }
-    case CellTree/Leaf:
-      return tree
-
-
-def print_tree(tree):
-  return print_tree_helper(tree, 0)
-
-def print_tree_helper(tree, depth):
-  indent = String/repeat("  ", depth)
-  match tree:
-    case CellTree/Node:
-      node_str = String/concat(indent, "Node: ")
-      node_str = String/concat(node_str, bool_to_string(tree.value))
-      node_str = String/concat(node_str, ", ")
-      node_str = String/concat(node_str, rule_to_string(tree.rule))
-      node_str = String/concat(node_str, "\n")
-      left_str = print_tree_helper(tree.left, depth + 1)
-      right_str = print_tree_helper(tree.right, depth + 1)
-      return String/concat(node_str, String/concat(left_str, right_str))
-    case CellTree/Leaf:
-      leaf_str = String/concat(indent, "Leaf: ")
-      leaf_str = String/concat(leaf_str, bool_to_string(tree.value))
-      leaf_str = String/concat(leaf_str, "\n")
-      return leaf_str
-
 def String/repeat(str, n):
   bend result = "", count = n:
     when count > 0:
@@ -204,12 +310,53 @@ def String/repeat(str, n):
     else:
       return result
 
+
+def String/length(s):
+  match s:
+    case String/Cons:
+      return 1 + String/length(s.tail)
+    case String/Nil:
+      return 0
+
+List/index = @l @i
+  match l {
+    List/Cons:
+      switch i {
+        0: l.head
+        _: (List/index l.tail (i-1))
+      }
+    List/Nil: *
+  }
+
+def get_list_length(list):
+  (len, *) = List/length(list)
+  return len
+
 def bool_to_string(bool):
   match bool:
     case Bool/True:
       return "True"
     case Bool/False:
       return "False"
+
+def bool_to_int(bool):
+  match bool:
+    case Bool/True:
+      return 1
+    case Bool/False:
+      return 0
+
+def int_to_string(n):
+  if n < 0:
+    return String/concat("-", int_to_string(-1 * n))
+  else:
+    if n == 0:
+      return "0"
+    else:
+      return String/concat(int_to_string(n / 10), char_to_string(n % 10 + 48))
+
+def char_to_string(c):
+  return String/Cons(c, String/Nil)
 
 # Helper function to convert Rule to String
 def rule_to_string(rule):
@@ -243,19 +390,61 @@ def rule_to_string(rule):
     case Rule/NOT_B:
       return "NOT_B"
 
-# Main Function
+
+def print_legend:
+  legend = "Legend:\n"
+  legend = String/concat(legend, "A/a: AND, O/o: OR, X/x: XOR, N/n: NAND\n")
+  legend = String/concat(legend, "R/r: NOR, Q/q: XNOR, I/i: IMPLICATION, E/e: EQUIVALENCE\n")
+  legend = String/concat(legend, "T/t: ALWAYS_TRUE, F/f: ALWAYS_FALSE\n")
+  legend = String/concat(legend, "U/u: A, V/v: B, W/w: NOT_A, Y/y: NOT_B\n")
+  legend = String/concat(legend, "L/l: Leaf (True/False)\n")
+  legend = String/concat(legend, "Uppercase: True, Lowercase: False\n\n")
+  return legend
+
 def main:
   with IO:
-    # This comment not accurate:
-    # This (depth=3) will create a 7x7 grid (2^3 - 1 = 7)
-    # Ideally, we'd specify depth naturally (7 instead of 3), but that would require computing log(base 2)(depth+1), and
-    # log is an F24 operation and conversion between number types isn't currently supported, so, we're stuck with this.
-    initial_depth = 3
+    width = 8
+    height = 6
     initial_seed = 12345
-    initial_tree = create_tree(initial_depth, initial_seed)
-    initial_tree_str = String/concat("\nInitial Tree:\n", print_tree(initial_tree))
-    * <- IO/print(initial_tree_str)
-    updated_tree = update_tree(initial_tree)
-    updated_tree_str = String/concat("\nUpdated Tree:\n", print_tree(updated_tree))
-    * <- IO/print(updated_tree_str)
+    initial_grid = create_grid(width, height, initial_seed)
+    * <- IO/print(print_legend)
+    * <- IO/print(String/concat("Grid dimensions: ", int_to_string(height)))
+    * <- IO/print(String/concat("x", int_to_string(width)))
+    * <- IO/print("\nInitial Grid:\n")
+    * <- IO/print(print_grid(initial_grid))
+    * <- IO/print("\nUpdating Grid:\n")
+    (updated_grid, debug_info) = update_grid(initial_grid)
+    * <- IO/print(print_debug_info(debug_info))
+    * <- IO/print("\nFinal Updated Grid:\n")
+    * <- IO/print(print_grid(updated_grid))
     return *
+
+def print_debug_info(debug_info):
+  bend y = 0, output = "":
+    when y < get_list_length(debug_info):
+      row_debug = List/index(debug_info, y)
+      output = String/concat(output, String/concat("Row ", int_to_string(y+1)))
+      output = String/concat(output, ":\n")
+      output = String/concat(output, print_row_debug(row_debug))
+      return fork(y + 1, output)
+    else:
+      return output
+
+def print_row_debug(row_debug):
+  bend x = 0, output = "":
+    when x < get_list_length(row_debug):
+      cell_debug = List/index(row_debug, x)
+      output = String/concat(output, print_cell_debug(cell_debug))
+      return fork(x + 1, output)
+    else:
+      return String/concat(output, "\n")
+
+def print_cell_debug(cell_debug):
+  bend i = 0, output = "":
+    when i < get_list_length(cell_debug):
+      info = List/index(cell_debug, i)
+      output = String/concat(output, info)
+      output = String/concat(output, " ")
+      return fork(i + 1, output)
+    else:
+      return String/concat(output, "| ")
